@@ -4,42 +4,45 @@ import 'package:fithub_admin/modules/auth/view/login_screen.dart';
 import 'package:fithub_admin/modules/dashboard/view/dashboard_screen.dart';
 import 'package:fithub_admin/modules/splash/view/splash_screen.dart';
 import 'package:fithub_admin/core/utils/token_manager.dart';
+import 'package:fithub_admin/core/components/layout/main_layout.dart';
+import 'package:fithub_admin/modules/management/view/placeholder_screens.dart';
 
 class AppRouter {
-  // Cấu hình router
   static final GoRouter router = GoRouter(
-    initialLocation: '/', // Mặc định vào Splash
-    debugLogDiagnostics: true, // Log debug khi chuyển trang
-    // Định nghĩa các đường dẫn
+    initialLocation: '/',
     routes: [
-      // 1. Splash Screen
-      GoRoute(
-        path: '/',
-        name: 'splash',
-        builder: (context, state) => const SplashScreen(),
-      ),
+      // Các trang không có Sidebar (Splash, Login)
+      GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
+      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
 
-      // 2. Login Screen
-      GoRoute(
-        path: '/login',
-        name: 'login',
-        builder: (context, state) => const LoginScreen(),
-      ),
-
-      // 3. Dashboard Screen
-      GoRoute(
-        path: '/dashboard',
-        name: 'dashboard',
-        builder: (context, state) => const DashboardScreen(),
+      // SHELL ROUTE: Các trang CÓ Sidebar/Drawer
+      ShellRoute(
+        builder: (context, state, child) {
+          return MainLayout(state: state, child: child);
+        },
+        routes: [
+          GoRoute(
+            path: '/dashboard',
+            builder: (context, state) => const DashboardScreen(),
+          ),
+          GoRoute(
+            path: '/products',
+            builder: (context, state) => const ProductScreen(),
+          ),
+          GoRoute(
+            path: '/categories',
+            builder: (context, state) => const CategoryScreen(),
+          ),
+          GoRoute(
+            path: '/orders',
+            builder: (context, state) => const OrderScreen(),
+          ),
+          GoRoute(
+            path: '/users',
+            builder: (context, state) => const UserScreen(),
+          ),
+        ],
       ),
     ],
-
-    // Redirect Logic: (Tùy chọn nâng cao)
-    // Tại đây bạn có thể kiểm tra nếu chưa có Token thì đá về Login
-    // Nhưng hiện tại ta đang xử lý logic này ở Splash nên tạm thời để null
-    redirect: (context, state) async {
-      // Logic bảo vệ route sẽ nằm ở đây sau này
-      return null;
-    },
   );
 }
