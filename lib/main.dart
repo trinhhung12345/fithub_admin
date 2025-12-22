@@ -2,8 +2,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:fithub_admin/configs/app_theme.dart';
 import 'package:fithub_admin/modules/auth/view_model/login_view_model.dart';
-import 'package:fithub_admin/modules/splash/view/splash_screen.dart'; // Import Splash
-import 'package:fithub_admin/modules/splash/view_model/splash_view_model.dart'; // Import Splash VM
+import 'package:fithub_admin/modules/splash/view_model/splash_view_model.dart';
+import 'package:fithub_admin/routes/app_routes.dart'; // Import router
 import 'package:provider/provider.dart';
 import 'package:url_strategy/url_strategy.dart';
 
@@ -14,9 +14,7 @@ void main() {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(
-          create: (_) => SplashViewModel(),
-        ), // Thêm Splash VM
+        ChangeNotifierProvider(create: (_) => SplashViewModel()),
         ChangeNotifierProvider(create: (_) => LoginViewModel()),
       ],
       child: const FitHubAdminApp(),
@@ -29,12 +27,15 @@ class FitHubAdminApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    // ĐỔI THÀNH MaterialApp.router
+    return MaterialApp.router(
       title: 'FitHub Admin',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      // Đổi LoginScreen thành SplashScreen làm màn hình khởi đầu
-      home: const SplashScreen(),
+
+      // Cấu hình Router
+      routerConfig: AppRouter.router,
+
       scrollBehavior: const MaterialScrollBehavior().copyWith(
         scrollbars: true,
         dragDevices: {

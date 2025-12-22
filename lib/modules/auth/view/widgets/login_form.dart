@@ -91,19 +91,6 @@ class LoginForm extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Checkbox(
-                        value: viewModel.rememberMe,
-                        onChanged: viewModel.toggleRememberMe,
-                        activeColor: AppColors.primary,
-                      ),
-                      const Text(
-                        "Ghi nhớ đăng nhập",
-                        style: TextStyle(fontFamily: 'Manrope'),
-                      ),
-                    ],
-                  ),
                   TextButton(
                     onPressed: () {},
                     child: const Text(
@@ -122,7 +109,12 @@ class LoginForm extends StatelessWidget {
               FitHubButton(
                 label: "Đăng nhập",
                 isLoading: viewModel.isLoading,
-                onPressed: () => viewModel.login(context),
+                onPressed: () {
+                  print(
+                    "DEBUG: Clicked!",
+                  ); // Log để kiểm tra xem UI có nhận lệnh không
+                  viewModel.login(context);
+                },
               ),
 
               const SizedBox(height: 24),

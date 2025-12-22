@@ -40,6 +40,9 @@ dependencies:
   url_strategy: ^0.3.0
   go_router: ^17.0.1
   flutter_svg: ^2.2.3
+  jwt_decoder: ^2.0.1      # Giải mã JWT
+  shared_preferences: ^2.2.2 # Lưu token xuống bộ nhớ máy
+  dio: ^5.9.0
 
 dev_dependencies:
   flutter_test:
