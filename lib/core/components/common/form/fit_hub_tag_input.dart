@@ -1,35 +1,81 @@
 import 'package:flutter/material.dart';
 import 'package:fithub_admin/configs/app_colors.dart';
-import 'package:fithub_admin/configs/app_text_styles.dart';
-import 'package:fithub_admin/core/components/common/form/fit_hub_label_input.dart';
 import 'package:fithub_admin/core/components/common/form/fit_hub_select_input.dart';
 import 'package:fithub_admin/data/models/product_tag.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class FitHubTagInput extends StatefulWidget {
   final Function(List<ProductTag>) onTagsChanged;
+  final List<ProductTag> initialTags; // Thêm tham số này
 
-  const FitHubTagInput({super.key, required this.onTagsChanged});
+  const FitHubTagInput({
+    super.key,
+    required this.onTagsChanged,
+    this.initialTags = const [], // Mặc định rỗng
+  });
 
   @override
   State<FitHubTagInput> createState() => _FitHubTagInputState();
 }
 
 class _FitHubTagInputState extends State<FitHubTagInput> {
-  final List<ProductTag> _tags = [];
+  late List<ProductTag> _tags; // Bỏ final, thêm late
 
-  // Temp controllers cho việc nhập liệu
-  final _tagNameController = TextEditingController();
+  // State cho dropdown
   TagType _selectedType = TagType.SHOES; // Mặc định
+  String? _selectedTagName; // Tag name được chọn
+
+  // Lấy danh sách tag names theo type đã chọn
+  List<String> get _availableTagNames => tagDictionary[_selectedType] ?? [];
+
+  @override
+  void initState() {
+    super.initState();
+    // Copy list từ initialTags để không ảnh hưởng list gốc
+    _tags = List.from(widget.initialTags);
+    // Set default tag name nếu có
+    if (_availableTagNames.isNotEmpty) {
+      _selectedTagName = _availableTagNames.first;
+    }
+  }
+
+  // Nếu cha update initialTags (khi load API xong), con cũng phải update theo
+  @override
+  void didUpdateWidget(covariant FitHubTagInput oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialTags != oldWidget.initialTags) {
+      setState(() {
+        _tags = List.from(widget.initialTags);
+      });
+    }
+  }
+
+  void _onTypeChanged(TagType? newType) {
+    if (newType == null) return;
+    setState(() {
+      _selectedType = newType;
+      // Reset tag name khi đổi type
+      final names = tagDictionary[newType] ?? [];
+      _selectedTagName = names.isNotEmpty ? names.first : null;
+    });
+  }
 
   void _addTag() {
-    if (_tagNameController.text.trim().isEmpty) return;
+    if (_selectedTagName == null) return;
+
+    // Kiểm tra tag đã tồn tại chưa
+    final newTag = ProductTag(name: _selectedTagName!, type: _selectedType);
+    final exists = _tags.any(
+      (t) => t.name == newTag.name && t.type == newTag.type,
+    );
+
+    if (exists) {
+      // Tag đã tồn tại, không thêm nữa
+      return;
+    }
 
     setState(() {
-      _tags.add(
-        ProductTag(name: _tagNameController.text.trim(), type: _selectedType),
-      );
-      _tagNameController.clear();
+      _tags.add(newTag);
     });
 
     // Callback ra ngoài
@@ -66,30 +112,31 @@ class _FitHubTagInputState extends State<FitHubTagInput> {
                 hintText: "Select Type",
                 items: TagType.values,
                 value: _selectedType,
-                itemLabelBuilder: (e) => e.name,
-                onChanged: (val) {
-                  if (val != null) setState(() => _selectedType = val);
-                },
+                itemLabelBuilder: (e) => e.name.replaceAll('_', ' '),
+                onChanged: _onTypeChanged,
               ),
             ),
             const SizedBox(width: 12),
 
-            // Input Name
+            // Select Tag Name (Dropdown thay vì Input)
             Expanded(
               flex: 5,
-              child: FitHubLabelInput(
+              child: FitHubSelectInput<String>(
                 label: "Tag Name",
-                hintText: "e.g. Gym, Running",
-                controller: _tagNameController,
+                hintText: "Select Tag",
+                items: _availableTagNames,
+                value: _selectedTagName,
+                itemLabelBuilder: (e) => e,
+                onChanged: (val) {
+                  if (val != null) setState(() => _selectedTagName = val);
+                },
               ),
             ),
             const SizedBox(width: 12),
 
             // Add Button
             Padding(
-              padding: const EdgeInsets.only(
-                bottom: 4.0,
-              ), // Căn chỉnh với input
+              padding: const EdgeInsets.only(bottom: 4.0),
               child: IconButton(
                 onPressed: _addTag,
                 style: IconButton.styleFrom(
@@ -117,7 +164,9 @@ class _FitHubTagInputState extends State<FitHubTagInput> {
               final index = entry.key;
               final tag = entry.value;
               return Chip(
-                label: Text("${tag.type.name}: ${tag.name}"),
+                label: Text(
+                  "${tag.type.name.replaceAll('_', ' ')}: ${tag.name}",
+                ),
                 labelStyle: const TextStyle(
                   fontSize: 12,
                   color: AppColors.textMain,

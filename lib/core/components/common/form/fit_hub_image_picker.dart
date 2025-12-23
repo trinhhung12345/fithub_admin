@@ -1,20 +1,25 @@
 import 'dart:io';
-import 'package:dotted_border/dotted_border.dart'; // Import thư viện nét đứt
+import 'package:dotted_border/dotted_border.dart';
+import 'package:flutter/foundation.dart'; // check kIsWeb
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:fithub_admin/configs/app_colors.dart';
 import 'package:fithub_admin/configs/app_text_styles.dart';
+import 'package:image_picker/image_picker.dart'; // Import để check XFile
 
 class FitHubImagePicker extends StatelessWidget {
   final String label;
-  final List<dynamic> images; // List chứa ảnh (String URL hoặc File)
-  final Function(int index) onImageTap; // Callback khi bấm vào ô ảnh
+  final List<dynamic>
+  images; // List chứa: String (URL), File (Mobile), hoặc XFile
+  final VoidCallback onAddTap; // Hàm gọi mở thư viện ảnh
+  final Function(int index) onRemoveTap; // Hàm xóa ảnh
 
   const FitHubImagePicker({
     super.key,
     this.label = "Image Product",
     required this.images,
-    required this.onImageTap,
+    required this.onAddTap,
+    required this.onRemoveTap,
   });
 
   @override
@@ -23,17 +28,22 @@ class FitHubImagePicker extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // 1. Tiêu đề
-        Text(
-          label,
-          style: AppTextStyles.bodyStyle(
-            weight: FontWeight.bold,
-            size: 16, // To hơn label input chút
-            color: AppColors.textMain,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: AppTextStyles.bodyStyle(weight: FontWeight.bold, size: 16),
+            ),
+            Text(
+              "${images.length} images selected",
+              style: const TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+          ],
         ),
         const SizedBox(height: 8),
 
-        // 2. Note (Màu xanh dương giống thiết kế)
+        // 2. Note
         RichText(
           text: TextSpan(
             style: AppTextStyles.bodyStyle(
@@ -48,102 +58,111 @@ class FitHubImagePicker extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              TextSpan(text: "Format photos SVG, PNG, or JPG (Max size 4mb)"),
+              TextSpan(
+                text: "Format photos SVG, PNG, JPG (Max 4mb). Click + to add.",
+              ),
             ],
           ),
         ),
         const SizedBox(height: 16),
 
-        // 3. Danh sách ô ảnh (4 ô)
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: List.generate(4, (index) {
-            // Lấy ảnh tại index (nếu có)
-            final dynamic image = (index < images.length)
-                ? images[index]
-                : null;
+        // 3. Grid ảnh (Wrap)
+        Wrap(
+          spacing: 12, // Khoảng cách ngang
+          runSpacing: 12, // Khoảng cách dọc
+          children: [
+            // A. Danh sách ảnh đã chọn
+            ...List.generate(images.length, (index) {
+              return _buildImageItem(index, images[index]);
+            }),
 
-            return Expanded(
-              child: Padding(
-                // Tạo khoảng cách giữa các ô, trừ ô cuối
-                padding: EdgeInsets.only(right: index == 3 ? 0 : 12.0),
-                child: _buildImageSlot(index, image),
-              ),
-            );
-          }),
+            // B. Nút Add (Luôn nằm cuối)
+            _buildAddButton(),
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildImageSlot(int index, dynamic image) {
-    // Kích thước ô vuông (Aspect Ratio 1:1)
-    return AspectRatio(
-      aspectRatio: 1,
-      child: GestureDetector(
-        onTap: () => onImageTap(index),
-        child: image != null
-            ? _buildFilledSlot(image) // Nếu có ảnh
-            : _buildEmptySlot(index), // Nếu chưa có ảnh (Nét đứt)
-      ),
-    );
-  }
-
-  // Trạng thái đã có ảnh (Hiển thị ảnh + nền xám)
-  Widget _buildFilledSlot(dynamic image) {
+  // Widget hiển thị 1 ảnh + Nút xóa
+  Widget _buildImageItem(int index, dynamic image) {
     ImageProvider? imgProvider;
 
+    // Xử lý hiển thị đa nền tảng
     if (image is String) {
-      imgProvider = NetworkImage(image); // Web blob url hoặc http url
+      imgProvider = NetworkImage(image); // URL từ server
+    } else if (image is XFile) {
+      // XFile từ image_picker
+      if (kIsWeb) {
+        imgProvider = NetworkImage(image.path); // Web dùng path (blob)
+      } else {
+        imgProvider = FileImage(File(image.path)); // Mobile dùng File
+      }
     } else if (image is File) {
-      imgProvider = FileImage(image); // Mobile File
+      imgProvider = FileImage(image);
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F5),
-        borderRadius: BorderRadius.circular(12),
-        image: imgProvider != null
-            ? DecorationImage(image: imgProvider, fit: BoxFit.cover)
-            : null,
-      ),
-      // ...
+    return Stack(
+      children: [
+        // Ảnh nền
+        Container(
+          width: 100, // Kích thước cố định cho đẹp
+          height: 100,
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+            image: imgProvider != null
+                ? DecorationImage(image: imgProvider, fit: BoxFit.cover)
+                : null,
+          ),
+        ),
+
+        // Nút Xóa (Góc trên phải)
+        Positioned(
+          top: 4,
+          right: 4,
+          child: GestureDetector(
+            onTap: () => onRemoveTap(index),
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 2)],
+              ),
+              child: const Icon(Icons.close, size: 14, color: AppColors.error),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
-  // Trạng thái trống (Nét đứt màu xanh)
-  Widget _buildEmptySlot(int index) {
-    return DottedBorder(
-      borderType: BorderType.RRect,
-      radius: const Radius.circular(12),
-      padding: EdgeInsets.zero,
-      color: AppColors.info, // Màu nét đứt (Xanh dương)
-      strokeWidth: 1,
-      dashPattern: const [6, 3], // Độ dài nét đứt
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.info.withOpacity(0.05), // Nền xanh siêu nhạt
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const FaIcon(
-                FontAwesomeIcons.image,
-                color: AppColors.info,
-                size: 24,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                "Photo ${index + 1}",
-                style: const TextStyle(
-                  color: AppColors.info,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+  // Widget Nút Thêm (Nét đứt)
+  Widget _buildAddButton() {
+    return GestureDetector(
+      onTap: onAddTap,
+      child: DottedBorder(
+        borderType: BorderType.RRect,
+        radius: const Radius.circular(12),
+        padding: EdgeInsets.zero,
+        color: AppColors.info,
+        strokeWidth: 1,
+        dashPattern: const [6, 3],
+        child: Container(
+          width: 100,
+          height: 100,
+          decoration: BoxDecoration(
+            color: AppColors.info.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Center(
+            child: FaIcon(
+              FontAwesomeIcons.plus,
+              color: AppColors.info,
+              size: 20,
+            ),
           ),
         ),
       ),

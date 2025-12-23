@@ -68,22 +68,20 @@ class _AddProductScreenState extends State<AddProductScreen> {
       final List<XFile> pickedFiles = await _picker.pickMultiImage();
       if (pickedFiles.isNotEmpty) {
         setState(() {
+          // THÊM VÀO danh sách hiện có (không xóa cái cũ)
           _selectedImages.addAll(pickedFiles);
-          // Giới hạn 4 ảnh hiển thị cho đẹp layout (nhưng list thực tế vẫn giữ đủ để gửi)
-          if (_selectedImages.length > 4) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  "Warning: Only first 4 images shown, but all will be uploaded",
-                ),
-              ),
-            );
-          }
         });
       }
     } catch (e) {
       print("Error picking image: $e");
     }
+  }
+
+  // Xóa ảnh
+  void _removeImage(int index) {
+    setState(() {
+      _selectedImages.removeAt(index);
+    });
   }
 
   // Lưu sản phẩm
@@ -147,13 +145,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
       // --- SIDE INFO: IMAGE PICKER ---
       sideInfo: FitHubImagePicker(
-        // Convert List<XFile> sang List hiển thị được (String path hoặc File)
-        images: _selectedImages
-            .map((e) => kIsWeb ? e.path : File(e.path))
-            .toList(),
-        onImageTap: (index) {
-          // Nếu bấm vào slot, mở picker
-          _pickImage();
+        images: _selectedImages, // Truyền thẳng list XFile
+
+        onAddTap: _pickImage, // Bấm nút + thì mở thư viện
+
+        onRemoveTap: (index) {
+          _removeImage(index); // Bấm nút X thì xóa
         },
       ),
 

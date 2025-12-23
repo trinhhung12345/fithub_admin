@@ -29,6 +29,67 @@ class _ProductScreenState extends State<ProductScreen> {
     });
   }
 
+  // Hàm hiện popup xác nhận
+  void _confirmDelete(ProductModel product) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Delete Product"),
+        content: RichText(
+          text: TextSpan(
+            style: const TextStyle(color: Colors.black87, fontSize: 16),
+            children: [
+              const TextSpan(text: "Are you sure you want to delete "),
+              TextSpan(
+                text: product.name,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const TextSpan(text: "? This action cannot be undone."),
+            ],
+          ),
+        ),
+        actions: [
+          // Nút Hủy
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+          ),
+          // Nút Xóa
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.pop(ctx); // Đóng dialog trước
+
+              // Gọi ViewModel xóa
+              final success = await context
+                  .read<ProductViewModel>()
+                  .deleteProduct(product.id);
+
+              if (mounted) {
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Deleted successfully"),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Failed to delete product"),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text("Delete", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Lắng nghe dữ liệu từ ViewModel
@@ -55,19 +116,22 @@ class _ProductScreenState extends State<ProductScreen> {
             // --- TOOLBAR ---
             FitHubToolbar(
               hintText: "Search for id, name product",
-              onSearchChanged: (val) {},
+              onSearchChanged: (value) {
+                // Gọi hàm search trong ViewModel
+                // Dùng read() để không rebuild lại toàn bộ widget tree mỗi khi gõ phím
+                context.read<ProductViewModel>().searchProduct(value);
+              },
               onFilterTap: () {},
               onExportTap: () {},
 
               // KHI BẤM NÚT NEW PRODUCT -> CHUYỂN TRANG
               onCreateTap: () {
-                context.go('/products/add');
+                context.go('/products/form');
               },
               createLabel: "New Product",
             ),
             const SizedBox(height: 24),
 
-            // --- TABS ---
             if (viewModel.categories.isNotEmpty || viewModel.tabs.length > 1)
               FitHubFilterTabs(
                 selectedIndex: viewModel.selectedTabIndex,
@@ -78,7 +142,82 @@ class _ProductScreenState extends State<ProductScreen> {
                   context.read<ProductViewModel>().filterByCategory(index);
                 },
               ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 12),
+            // --- BULK ACTION ---
+            if (viewModel.selectedIds.isNotEmpty)
+              Row(
+                children: [
+                  Text(
+                    "${viewModel.selectedIds.length} items selected",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const Spacer(),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                    ),
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text("Delete Selected"),
+                          content: Text(
+                            "Are you sure you want to delete ${viewModel.selectedIds.length} items?",
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              child: const Text("Cancel"),
+                            ),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                              ),
+                              onPressed: () async {
+                                Navigator.pop(ctx);
+                                final success = await context
+                                    .read<ProductViewModel>()
+                                    .deleteSelectedProducts();
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        success
+                                            ? "Deleted successfully"
+                                            : "Failed to delete some items",
+                                      ),
+                                      backgroundColor: success
+                                          ? Colors.green
+                                          : Colors.orange,
+                                    ),
+                                  );
+                                }
+                              },
+                              child: const Text(
+                                "Delete All",
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    icon: const Icon(
+                      Icons.delete,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    label: const Text(
+                      "Delete Selected",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            const SizedBox(height: 12),
 
             // --- DATA TABLE ---
             // Xử lý Loading / Error / Data
@@ -108,9 +247,17 @@ class _ProductScreenState extends State<ProductScreen> {
 
                   data: products, // Truyền List Model vào
 
-                  isSelected: (item) => false, // Tạm thời tắt logic select
-                  onSelectRow: (item, val) {},
-                  onSelectAll: (val) {}, // Logic select all làm sau
+                  isSelected: (item) => viewModel.selectedIds.contains(item.id),
+                  onSelectRow: (item, val) {
+                    context.read<ProductViewModel>().toggleProductSelection(
+                      item.id,
+                    );
+                  },
+                  onSelectAll: (val) {
+                    context.read<ProductViewModel>().toggleSelectAll(
+                      val ?? false,
+                    );
+                  },
                   currentPage: 1,
                   totalPages: 1, // API chưa có paging, tạm để 1
                   onPageChanged: (page) {},
@@ -168,8 +315,11 @@ class _ProductScreenState extends State<ProductScreen> {
                     Text(item.categoryName),
                     FitHubActionButtons(
                       onView: () {},
-                      onEdit: () {},
-                      onDelete: () {},
+                      onEdit: () {
+                        // Chuyển sang trang form kèm ID
+                        context.go('/products/form/${item.id}');
+                      },
+                      onDelete: () => _confirmDelete(item),
                     ),
                   ],
 
@@ -236,8 +386,11 @@ class _ProductScreenState extends State<ProductScreen> {
                           ),
                           FitHubActionButtons(
                             onView: () {},
-                            onEdit: () {},
-                            onDelete: () {},
+                            onEdit: () {
+                              // Chuyển sang trang form kèm ID
+                              context.go('/products/form/${item.id}');
+                            },
+                            onDelete: () => _confirmDelete(item),
                           ),
                         ],
                       ),

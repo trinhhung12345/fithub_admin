@@ -1,3 +1,5 @@
+import 'package:fithub_admin/data/models/product_tag.dart';
+
 class ProductModel {
   final int id;
   final String name;
@@ -6,7 +8,9 @@ class ProductModel {
   final int stock; // Tương ứng QTY
   final int categoryId;
   final String categoryName;
-  final String? imageUrl; // Logic lấy từ mảng files
+  final String? imageUrl; // Logic lấy từ mảng files (ảnh đầu tiên)
+  final List<String> fileUrls; // Danh sách tất cả ảnh
+  final List<ProductTag> tags; // Danh sách tags
   // API hiện tại chưa thấy trả về Date, tạm thời để null hoặc placeholder
   final DateTime? createdAt;
 
@@ -19,16 +23,31 @@ class ProductModel {
     required this.categoryId,
     required this.categoryName,
     this.imageUrl,
+    this.fileUrls = const [],
+    this.tags = const [],
     this.createdAt,
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
-    // Xử lý ảnh (Giữ nguyên logic cũ)
-    String? img;
+    // 1. Parse List Files lấy URL
+    List<String> urls = [];
     if (json['files'] != null && (json['files'] as List).isNotEmpty) {
-      // Check key originUrl (API get all) hoặc originUrl (API category)
-      // JSON của bạn trả về giống nhau là originUrl nên ok
-      img = json['files'][0]['originUrl'];
+      urls = (json['files'] as List)
+          .map((f) => f['originUrl'] as String)
+          .toList();
+    }
+
+    // 2. Parse Tags (MỚI)
+    List<ProductTag> parsedTags = [];
+    if (json['tags'] != null) {
+      parsedTags = (json['tags'] as List).map((t) {
+        // Map string từ server về Enum, nếu không khớp thì mặc định SHOES
+        TagType type = TagType.values.firstWhere(
+          (e) => e.name == (t['type'] as String).toUpperCase(),
+          orElse: () => TagType.SHOES,
+        );
+        return ProductTag(name: t['name'], type: type);
+      }).toList();
     }
 
     // XỬ LÝ CATEGORY (Logic mới)
@@ -49,7 +68,9 @@ class ProductModel {
       stock: json['stock'] ?? 0,
       categoryId: catId, // Dùng biến đã xử lý
       categoryName: catName, // Dùng biến đã xử lý
-      imageUrl: img,
+      fileUrls: urls, // Danh sách tất cả URL ảnh
+      tags: parsedTags, // Gán tags
+      imageUrl: urls.isNotEmpty ? urls.first : null, // Lấy ảnh đầu tiên
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : DateTime.now(),
