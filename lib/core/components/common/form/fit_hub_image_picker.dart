@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:dotted_border/dotted_border.dart'; // Import thư viện nét đứt
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -90,18 +91,23 @@ class FitHubImagePicker extends StatelessWidget {
 
   // Trạng thái đã có ảnh (Hiển thị ảnh + nền xám)
   Widget _buildFilledSlot(dynamic image) {
+    ImageProvider? imgProvider;
+
+    if (image is String) {
+      imgProvider = NetworkImage(image); // Web blob url hoặc http url
+    } else if (image is File) {
+      imgProvider = FileImage(image); // Mobile File
+    }
+
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F5), // Nền xám nhẹ
+        color: const Color(0xFFF5F5F5),
         borderRadius: BorderRadius.circular(12),
-        // Giả lập hiển thị ảnh (Sau này bạn check type để hiện FileImage hoặc NetworkImage)
-        image: image is String
-            ? DecorationImage(image: NetworkImage(image), fit: BoxFit.contain)
+        image: imgProvider != null
+            ? DecorationImage(image: imgProvider, fit: BoxFit.cover)
             : null,
       ),
-      child: image is! String
-          ? const Center(child: Icon(Icons.image, color: Colors.grey))
-          : null,
+      // ...
     );
   }
 
