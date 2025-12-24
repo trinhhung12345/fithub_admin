@@ -8,6 +8,8 @@ import 'package:fithub_admin/core/components/layout/main_layout.dart';
 import 'package:fithub_admin/modules/management/view/product_screen.dart';
 import 'package:fithub_admin/modules/management/view/product_form_screen.dart';
 import 'package:fithub_admin/modules/management/view/category_screen.dart';
+import 'package:fithub_admin/modules/management/view/order_screen.dart';
+import 'package:fithub_admin/modules/profile/view/profile_screen.dart';
 
 class AppRouter {
   static final GoRouter router = GoRouter(
@@ -53,14 +55,17 @@ class AppRouter {
             builder: (context, state) => const CategoryScreen(),
           ),
 
-          // GoRoute(
-          //   path: '/categories',
-          //   builder: (context, state) => const CategoryScreen(),
-          // ),
-          // GoRoute(
-          //   path: '/orders',
-          //   builder: (context, state) => const OrderScreen(),
-          // ),
+          // --- ORDER ROUTE ---
+          GoRoute(
+            path: '/orders',
+            builder: (context, state) => const OrderScreen(),
+          ),
+
+          GoRoute(
+            path: '/profile',
+            builder: (context, state) => const ProfileScreen(),
+          ),
+
           // GoRoute(
           //   path: '/users',
           //   builder: (context, state) => const UserScreen(),

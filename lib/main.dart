@@ -8,6 +8,9 @@ import 'package:provider/provider.dart';
 import 'package:url_strategy/url_strategy.dart';
 import 'package:fithub_admin/modules/management/view_model/product_view_model.dart';
 import 'package:fithub_admin/modules/management/view_model/category_view_model.dart';
+import 'package:fithub_admin/modules/management/view_model/order_view_model.dart';
+import 'package:fithub_admin/modules/dashboard/view_model/dashboard_view_model.dart';
+import 'package:fithub_admin/modules/profile/view_model/profile_view_model.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,8 +21,11 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (_) => SplashViewModel()),
         ChangeNotifierProvider(create: (_) => LoginViewModel()),
+        ChangeNotifierProvider(create: (_) => DashboardViewModel()),
         ChangeNotifierProvider(create: (_) => ProductViewModel()),
         ChangeNotifierProvider(create: (_) => CategoryViewModel()),
+        ChangeNotifierProvider(create: (_) => OrderViewModel()),
+        ChangeNotifierProvider(create: (_) => ProfileViewModel()),
       ],
       child: const FitHubAdminApp(),
     ),
