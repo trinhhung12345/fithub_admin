@@ -8,6 +8,7 @@ import 'package:fithub_admin/core/components/common/table/fit_hub_data_table.dar
 import 'package:fithub_admin/core/components/common/table/table_components.dart';
 import 'package:fithub_admin/data/models/category_model.dart';
 import 'package:fithub_admin/modules/management/view_model/category_view_model.dart';
+import 'package:fithub_admin/modules/management/view/widgets/category_form_dialog.dart';
 
 class CategoryScreen extends StatefulWidget {
   const CategoryScreen({super.key});
@@ -23,6 +24,66 @@ class _CategoryScreenState extends State<CategoryScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CategoryViewModel>().initData();
     });
+  }
+
+  void _confirmDelete(CategoryModel category) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Delete Category"),
+        content: RichText(
+          text: TextSpan(
+            style: const TextStyle(color: Colors.black87, fontSize: 16),
+            children: [
+              const TextSpan(text: "Are you sure you want to delete "),
+              TextSpan(
+                text: category.name,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const TextSpan(
+                text: "?\nThis will mark the category as deleted.",
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.pop(ctx); // Đóng dialog
+
+              // Gọi ViewModel
+              final success = await context
+                  .read<CategoryViewModel>()
+                  .deleteCategory(category.id);
+
+              if (mounted) {
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Deleted successfully"),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Failed to delete category"),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text("Delete", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -52,8 +113,11 @@ class _CategoryScreenState extends State<CategoryScreen> {
               hintText: "Search category...",
               createLabel: "New Category",
               onCreateTap: () {
-                // Mở dialog tạo mới (Làm sau)
-                print("Create Category");
+                showDialog(
+                  context: context,
+                  barrierDismissible: false, // Bắt buộc bấm nút mới đóng
+                  builder: (context) => const CategoryFormDialog(),
+                );
               },
               onSearchChanged: (val) {
                 // Logic search local nếu cần
@@ -100,11 +164,15 @@ class _CategoryScreenState extends State<CategoryScreen> {
                         : FitHubStatusBadge.error("Inactive"),
                     FitHubActionButtons(
                       onEdit: () {
-                        /* Edit logic */
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (context) => CategoryFormDialog(
+                            category: item,
+                          ), // Truyền item vào
+                        );
                       },
-                      onDelete: () {
-                        /* Delete logic */
-                      },
+                      onDelete: () => _confirmDelete(item),
                     ),
                   ],
 
@@ -155,7 +223,18 @@ class _CategoryScreenState extends State<CategoryScreen> {
                             "Action: ",
                             style: TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          FitHubActionButtons(onEdit: () {}, onDelete: () {}),
+                          FitHubActionButtons(
+                            onEdit: () {
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (context) => CategoryFormDialog(
+                                  category: item,
+                                ), // Truyền item vào
+                              );
+                            },
+                            onDelete: () => _confirmDelete(item),
+                          ),
                         ],
                       ),
                     ],

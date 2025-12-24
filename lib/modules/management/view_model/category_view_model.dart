@@ -24,5 +24,57 @@ class CategoryViewModel extends ChangeNotifier {
     }
   }
 
-  // Sau này thêm hàm create/update/delete ở đây
+  Future<bool> createCategory({
+    required String name,
+    required String description,
+    required int status,
+  }) async {
+    // Không set isLoading toàn cục ở đây để tránh bảng bị loading lại,
+    // Loading sẽ hiển thị cục bộ trên nút Save của Dialog
+    final success = await _service.createCategory(
+      name: name,
+      description: description,
+      status: status,
+    );
+
+    if (success) {
+      // Nếu thành công, reload lại danh sách để hiện item mới
+      await initData();
+    }
+
+    return success;
+  }
+
+  Future<bool> updateCategory({
+    required int id,
+    required String name,
+    required String description,
+    required bool status,
+  }) async {
+    final success = await _service.updateCategory(
+      id: id,
+      name: name,
+      description: description,
+      status: status,
+    );
+
+    if (success) {
+      // Reload lại danh sách để thấy thay đổi
+      await initData();
+    }
+
+    return success;
+  }
+
+  Future<bool> deleteCategory(int id) async {
+    final success = await _service.deleteCategory(id);
+
+    if (success) {
+      // Xóa item khỏi list hiện tại để không phải load lại API
+      categories.removeWhere((item) => item.id == id);
+      notifyListeners();
+    }
+
+    return success;
+  }
 }

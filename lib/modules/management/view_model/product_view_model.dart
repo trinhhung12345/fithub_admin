@@ -44,19 +44,22 @@ class ProductViewModel extends ChangeNotifier {
   // --- INIT DATA ---
   Future<void> initData() async {
     isLoading = true;
-    selectedIds.clear(); // Reset selection khi reload
+    selectedIds.clear();
     notifyListeners();
+
     try {
       final results = await Future.wait([
         _service.getProducts(),
         _service.getCategories(),
       ]);
-      _sourceProducts = results[0] as List<ProductModel>;
-      products = List.from(_sourceProducts);
+
+      products = results[0] as List<ProductModel>;
       categories = results[1] as List<CategoryModel>;
+
       tabs = ["All Product", ...categories.map((e) => e.name)];
     } catch (e) {
       errorMessage = e.toString();
+      products = []; // Reset về rỗng nếu lỗi
     } finally {
       isLoading = false;
       notifyListeners();
@@ -66,20 +69,22 @@ class ProductViewModel extends ChangeNotifier {
   // --- FILTER ---
   Future<void> filterByCategory(int index) async {
     if (index == selectedTabIndex) return;
+
     selectedTabIndex = index;
     isLoading = true;
-    selectedIds.clear(); // Reset selection khi đổi tab
+    selectedIds.clear();
     notifyListeners();
+
     try {
       if (index == 0) {
-        _sourceProducts = await _service.getProducts();
+        products = await _service.getProducts();
       } else {
         final categoryId = categories[index - 1].id;
-        _sourceProducts = await _service.getProductsByCategory(categoryId);
+        products = await _service.getProductsByCategory(categoryId);
       }
-      products = List.from(_sourceProducts);
     } catch (e) {
       errorMessage = e.toString();
+      products = [];
     } finally {
       isLoading = false;
       notifyListeners();
@@ -87,18 +92,32 @@ class ProductViewModel extends ChangeNotifier {
   }
 
   // --- SEARCH ---
-  void searchProduct(String query) {
-    selectedIds.clear(); // Reset selection khi search
-    if (query.isEmpty) {
-      products = List.from(_sourceProducts);
-    } else {
-      final lowerQuery = query.toLowerCase();
-      products = _sourceProducts.where((p) {
-        return p.name.toLowerCase().contains(lowerQuery) ||
-            p.id.toString().contains(lowerQuery);
-      }).toList();
+  Future<void> searchProduct(String keyword) async {
+    // Nếu keyword rỗng thì quay về tab "All Product"
+    if (keyword.trim().isEmpty) {
+      selectedTabIndex = 0; // Reset UI tab về đầu
+      await filterByCategory(0);
+      return;
     }
+
+    isLoading = true;
+    selectedIds.clear();
+
+    // Khi search, ta nên reset tab về "All Product" để tránh gây hiểu nhầm
+    // (VD: Đang ở tab "Túi" mà search ra "Giày")
+    selectedTabIndex = 0;
+
     notifyListeners();
+
+    try {
+      products = await _service.searchProducts(keyword);
+    } catch (e) {
+      errorMessage = e.toString();
+      products = [];
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
   }
 
   // --- DELETE SINGLE (Cập nhật) ---

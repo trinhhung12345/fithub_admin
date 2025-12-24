@@ -11,6 +11,7 @@ import 'package:fithub_admin/core/components/common/table/table_components.dart'
 import 'package:fithub_admin/data/models/product_model.dart'; // Import Model
 import 'package:fithub_admin/modules/management/view_model/product_view_model.dart'; // Import VM
 import 'package:go_router/go_router.dart';
+import 'dart:async'; // Thêm thư viện để sử dụng Timer
 
 class ProductScreen extends StatefulWidget {
   const ProductScreen({super.key});
@@ -20,6 +21,24 @@ class ProductScreen extends StatefulWidget {
 }
 
 class _ProductScreenState extends State<ProductScreen> {
+  Timer? _debounce; // Biến Timer để xử lý trễ
+
+  @override
+  void dispose() {
+    _debounce?.cancel(); // Hủy timer khi thoát màn hình
+    super.dispose();
+  }
+
+  // Hàm xử lý search với debounce
+  void _onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+
+    // Chờ 500ms sau khi ngừng gõ mới gọi API
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      context.read<ProductViewModel>().searchProduct(query);
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -116,11 +135,7 @@ class _ProductScreenState extends State<ProductScreen> {
             // --- TOOLBAR ---
             FitHubToolbar(
               hintText: "Search for id, name product",
-              onSearchChanged: (value) {
-                // Gọi hàm search trong ViewModel
-                // Dùng read() để không rebuild lại toàn bộ widget tree mỗi khi gõ phím
-                context.read<ProductViewModel>().searchProduct(value);
-              },
+              onSearchChanged: _onSearchChanged,
               onFilterTap: () {},
               onExportTap: () {},
 
