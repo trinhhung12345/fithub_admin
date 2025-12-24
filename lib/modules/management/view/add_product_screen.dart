@@ -12,7 +12,7 @@ import 'package:fithub_admin/core/components/common/form/fit_hub_image_picker.da
 import 'package:fithub_admin/core/components/common/form/fit_hub_label_input.dart';
 import 'package:fithub_admin/core/components/common/form/fit_hub_select_input.dart';
 import 'package:fithub_admin/core/components/common/form/fit_hub_tag_input.dart'; // Tag Input Mới
-import 'package:fithub_admin/core/components/common/form/fit_hub_form_scaffold.dart';
+import 'package:fithub_admin/core/components/layout/fit_hub_form_scaffold.dart';
 
 // Service & Models
 import 'package:fithub_admin/data/services/product_service.dart';
