@@ -287,7 +287,6 @@ class _ProductScreenState extends State<ProductScreen> {
                           decoration: BoxDecoration(
                             color: Colors.grey[200],
                             borderRadius: BorderRadius.circular(8),
-                            // Kiểm tra nếu có ảnh thì hiện, không thì hiện icon
                             image: item.imageUrl != null
                                 ? DecorationImage(
                                     image: NetworkImage(item.imageUrl!),
@@ -295,9 +294,6 @@ class _ProductScreenState extends State<ProductScreen> {
                                   )
                                 : null,
                           ),
-                          child: item.imageUrl == null
-                              ? const Icon(Icons.image, size: 20)
-                              : null,
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -325,15 +321,55 @@ class _ProductScreenState extends State<ProductScreen> {
                         ),
                       ],
                     ),
+
+                    // 2. Price (Giữ nguyên)
                     Text("\$${NumberFormat("#,##0").format(item.price)}"),
+
+                    // 3. Stock (Giữ nguyên)
                     Text("${item.stock}"),
+
+                    // 4. Category (Giữ nguyên)
                     Text(item.categoryName),
+
+                    // ---------------------------------------------------------
+                    // 👇 5. STATUS (CẬP NHẬT PHẦN NÀY) 👇
+                    // Thay thế FitHubStatusBadge bằng Switch
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Transform.scale(
+                          scale:
+                              0.8, // Thu nhỏ Switch lại một chút cho gọn bảng
+                          child: Switch(
+                            value: item.active,
+                            activeColor: Colors.green, // Màu khi Active
+                            inactiveThumbColor: Colors.grey,
+                            inactiveTrackColor: Colors.grey.shade300,
+                            onChanged: (val) {
+                              // Gọi ViewModel để cập nhật trạng thái
+                              context
+                                  .read<ProductViewModel>()
+                                  .toggleProductStatus(item);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          item.active ? "Active" : "Hidden",
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: item.active ? Colors.green : Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                    // ---------------------------------------------------------
+
+                    // 6. Action Buttons (Giữ nguyên)
                     FitHubActionButtons(
                       onView: () {},
-                      onEdit: () {
-                        // Chuyển sang trang form kèm ID
-                        context.go('/products/form/${item.id}');
-                      },
+                      onEdit: () => context.go('/products/form/${item.id}'),
                       onDelete: () => _confirmDelete(item),
                     ),
                   ],
@@ -391,6 +427,51 @@ class _ProductScreenState extends State<ProductScreen> {
                       ),
                       _buildMobileRow("Stock", "${item.stock}"),
                       _buildMobileRow("Category", item.categoryName),
+
+                      // ---------------------------------------------------------
+                      // 👇 STATUS ROW (CẬP NHẬT PHẦN NÀY) 👇
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              "Status",
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                            Row(
+                              children: [
+                                Text(
+                                  item.active ? "Active" : "Hidden",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: item.active
+                                        ? Colors.green
+                                        : Colors.grey,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                SizedBox(
+                                  height:
+                                      24, // Giới hạn chiều cao switch trên mobile
+                                  child: Switch(
+                                    value: item.active,
+                                    activeColor: Colors.green,
+                                    onChanged: (val) {
+                                      context
+                                          .read<ProductViewModel>()
+                                          .toggleProductStatus(item);
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // ---------------------------------------------------------
                       const Divider(),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
@@ -401,10 +482,8 @@ class _ProductScreenState extends State<ProductScreen> {
                           ),
                           FitHubActionButtons(
                             onView: () {},
-                            onEdit: () {
-                              // Chuyển sang trang form kèm ID
-                              context.go('/products/form/${item.id}');
-                            },
+                            onEdit: () =>
+                                context.go('/products/form/${item.id}'),
                             onDelete: () => _confirmDelete(item),
                           ),
                         ],

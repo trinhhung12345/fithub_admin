@@ -181,4 +181,54 @@ class ProductViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<bool> toggleProductStatus(ProductModel product) async {
+    // Optimistic Update: Cập nhật UI trước cho mượt (Optional)
+    // Nhưng an toàn nhất là gọi API xong mới cập nhật
+
+    try {
+      final success = await _service.updateProduct(
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        stock: product.stock,
+        categoryId: product.categoryId,
+
+        // ĐẢO NGƯỢC TRẠNG THÁI ACTIVE
+        // Lưu ý: Bạn cần update ProductService để nhận tham số 'active'
+        active: !product.active,
+
+        tags: product.tags,
+        newImages: [], // Không gửi ảnh mới
+      );
+
+      if (success) {
+        // Cập nhật lại list local để UI đổi màu switch
+        final index = products.indexWhere((p) => p.id == product.id);
+        if (index != -1) {
+          // Tạo object mới với active đã đổi (vì ProductModel là final)
+          products[index] = ProductModel(
+            id: product.id,
+            name: product.name,
+            description: product.description,
+            price: product.price,
+            stock: product.stock,
+            categoryId: product.categoryId,
+            categoryName: product.categoryName,
+            active: !product.active, // Đổi active
+            imageUrl: product.imageUrl,
+            fileUrls: product.fileUrls,
+            tags: product.tags,
+          );
+          notifyListeners();
+        }
+      }
+      return success;
+    } catch (e) {
+      errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
 }

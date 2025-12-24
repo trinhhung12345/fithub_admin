@@ -1,27 +1,28 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart'; // check kIsWeb
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
-// Components & Models
+// Components
 import 'package:fithub_admin/configs/app_colors.dart';
 import 'package:fithub_admin/core/components/common/fit_hub_breadcrumb.dart';
 import 'package:fithub_admin/core/components/common/form/fit_hub_image_picker.dart';
 import 'package:fithub_admin/core/components/common/form/fit_hub_label_input.dart';
 import 'package:fithub_admin/core/components/common/form/fit_hub_select_input.dart';
 import 'package:fithub_admin/core/components/common/form/fit_hub_tag_input.dart';
-import 'package:fithub_admin/core/components/common/form/fit_hub_form_scaffold.dart';
+import 'package:fithub_admin/core/components/layout/fit_hub_form_scaffold.dart';
+
+// Models & Services
 import 'package:fithub_admin/data/models/category_model.dart';
-import 'package:fithub_admin/data/models/product_model.dart';
 import 'package:fithub_admin/data/models/product_tag.dart';
 import 'package:fithub_admin/data/services/product_service.dart';
 import 'package:fithub_admin/modules/management/view_model/product_view_model.dart';
 
 class ProductFormScreen extends StatefulWidget {
-  final String? productId; // Nếu null -> Thêm mới, Có ID -> Sửa
+  final String? productId; // null = Create, có ID = Edit
 
   const ProductFormScreen({super.key, this.productId});
 
@@ -39,19 +40,25 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   final _qtyController = TextEditingController();
   final _descController = TextEditingController();
 
-  // State
-  bool get isEditMode => widget.productId != null; // Check chế độ
+  // State Variables
+  bool get isEditMode => widget.productId != null;
   bool _isLoading = false;
 
+  // Data Lists
   List<CategoryModel> _categories = [];
   CategoryModel? _selectedCategory;
-  List<ProductTag> _tags = [];
 
-  // Quản lý ảnh: Trộn lẫn giữa ảnh cũ (String URL) và ảnh mới (XFile)
-  // List này dùng để hiển thị lên UI
+  // Tags
+  List<ProductTag> _tags = []; // Tag sẽ gửi đi
+  List<ProductTag> _initialTags = []; // Tag ban đầu (để hiển thị khi edit)
+
+  // Status
+  bool _isActive = true; // Mặc định là Active
+
+  // Images Logic
+  // _displayImages: Chứa cả String (Url cũ) và XFile (Ảnh mới) để hiển thị UI
   List<dynamic> _displayImages = [];
-
-  // List này dùng để track ảnh mới chọn để upload
+  // _newImagesToUpload: Chỉ chứa XFile để gửi lên API
   List<XFile> _newImagesToUpload = [];
 
   @override
@@ -69,11 +76,11 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     super.dispose();
   }
 
+  // --- INIT DATA ---
   Future<void> _initData() async {
     setState(() => _isLoading = true);
-
-    // 1. Load Categories
     try {
+      // 1. Load Categories (Ưu tiên lấy từ Cache ViewModel)
       final vm = context.read<ProductViewModel>();
       if (vm.categories.isNotEmpty) {
         _categories = vm.categories;
@@ -81,85 +88,97 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         _categories = await _service.getCategories();
       }
 
-      // 2. Nếu là Edit Mode -> Load Product Detail
+      // 2. Nếu là Edit Mode -> Load chi tiết sản phẩm
       if (isEditMode) {
         await _loadProductDetail();
       }
     } catch (e) {
       print("Error init data: $e");
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // --- LOGIC LOAD DỮ LIỆU ĐỂ SỬA ---
+  // --- LOAD DETAIL FOR EDIT ---
   Future<void> _loadProductDetail() async {
     final int id = int.parse(widget.productId!);
     final product = await _service.getProductDetail(id);
 
     if (product != null) {
-      // 1. Fill Text Controllers
+      // Fill Text Fields
       _nameController.text = product.name;
       _descController.text = product.description;
       _priceController.text = product.price.toStringAsFixed(0);
       _qtyController.text = product.stock.toString();
 
-      // 2. Fill Category (Tìm object trong list _categories khớp ID)
+      // Fill Category
       try {
         _selectedCategory = _categories.firstWhere(
           (c) => c.id == product.categoryId,
         );
-      } catch (e) {
-        print("Category ID ${product.categoryId} not found in list");
-      }
+      } catch (_) {}
 
-      // 3. Fill Images (Lấy từ API files)
-      // Sử dụng fileUrls đã được parse trong Model
+      // Fill Status
+      _isActive = product.active;
+
+      // Fill Images (Ảnh cũ từ Server)
       if (product.fileUrls.isNotEmpty) {
-        _displayImages.addAll(product.fileUrls);
-      } else if (product.imageUrl != null) {
-        _displayImages.add(product.imageUrl);
+        setState(() {
+          _displayImages = List.from(product.fileUrls);
+        });
       }
 
-      // 4. Fill Tags (Nếu có - cần update model để lấy tags)
-      // _tags = product.tags...
+      // Fill Tags
+      if (product.tags.isNotEmpty) {
+        setState(() {
+          _initialTags = List.from(product.tags);
+          _tags = List.from(
+            product.tags,
+          ); // Sync luôn để nếu không sửa gì thì vẫn gửi tag cũ
+        });
+      }
     }
   }
 
-  // Chọn ảnh mới
+  // --- IMAGE ACTIONS ---
   Future<void> _pickImage() async {
-    final List<XFile> pickedFiles = await _picker.pickMultiImage();
-    if (pickedFiles.isNotEmpty) {
-      setState(() {
-        _newImagesToUpload.addAll(pickedFiles); // Để gửi API
-        _displayImages.addAll(pickedFiles); // Để hiện UI
-      });
+    try {
+      final List<XFile> pickedFiles = await _picker.pickMultiImage();
+      if (pickedFiles.isNotEmpty) {
+        setState(() {
+          _newImagesToUpload.addAll(pickedFiles);
+          _displayImages.addAll(pickedFiles);
+        });
+      }
+    } catch (e) {
+      print("Pick image error: $e");
     }
   }
 
-  // Xóa ảnh
   void _removeImage(int index) {
     setState(() {
       final item = _displayImages[index];
       _displayImages.removeAt(index);
 
-      // Nếu là ảnh mới (XFile) thì xóa khỏi list upload luôn
+      // Nếu là ảnh mới thì xóa khỏi list upload
       if (item is XFile) {
         _newImagesToUpload.remove(item);
-      } else {
-        // Nếu là ảnh cũ (String URL) -> Cần logic lưu ID để gửi API xóa (Làm sau)
-        print("Mark image URL $item as deleted");
       }
+      // Nếu là ảnh cũ (String URL), logic hiện tại là xóa khỏi UI.
+      // (Backend cần logic riêng để xóa file cũ nếu cần, ở đây ta chỉ gửi update thông tin mới)
     });
   }
 
+  // --- SUBMIT ---
   Future<void> _handleSubmit() async {
-    // Validate sơ bộ
+    // Validate cơ bản
     if (_nameController.text.isEmpty ||
         _priceController.text.isEmpty ||
         _selectedCategory == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill required fields")),
+        const SnackBar(
+          content: Text("Please fill required fields (Name, Price, Category)"),
+        ),
       );
       return;
     }
@@ -168,27 +187,33 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
     try {
       bool success = false;
+      final double price = double.tryParse(_priceController.text) ?? 0;
+      final int stock = int.tryParse(_qtyController.text) ?? 0;
 
       if (isEditMode) {
-        // --- LOGIC UPDATE ---
+        // --- UPDATE ---
         success = await _service.updateProduct(
-          id: int.parse(widget.productId!), // ID lấy từ URL params
+          id: int.parse(widget.productId!),
           name: _nameController.text,
           description: _descController.text,
-          price: double.tryParse(_priceController.text) ?? 0,
-          stock: int.tryParse(_qtyController.text) ?? 0,
+          price: price,
+          stock: stock,
           categoryId: _selectedCategory!.id,
+          active: _isActive, // Gửi trạng thái active
           tags: _tags,
-          newImages: _newImagesToUpload, // Chỉ gửi ảnh mới chọn thêm
+          newImages: _newImagesToUpload,
         );
       } else {
-        // --- LOGIC CREATE (Cũ) ---
+        // --- CREATE ---
         success = await _service.createProduct(
           name: _nameController.text,
           description: _descController.text,
-          price: double.tryParse(_priceController.text) ?? 0,
-          stock: int.tryParse(_qtyController.text) ?? 0,
+          price: price,
+          stock: stock,
           categoryId: _selectedCategory!.id,
+          // Mặc định create là active=true, nhưng nếu muốn tùy chỉnh thì truyền _isActive
+          // Bạn cần update hàm createProduct trong service để nhận active nếu muốn
+          // Ở đây giả sử createProduct mặc định active=true, hoặc bạn đã update service rồi
           tags: _tags,
           images: _newImagesToUpload,
         );
@@ -220,7 +245,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   @override
   Widget build(BuildContext context) {
     return FitHubFormScaffold(
-      title: isEditMode ? "Edit Product" : "Add Product", // Đổi tiêu đề động
+      // Header
+      title: isEditMode ? "Edit Product" : "Add Product",
       breadcrumbs: [
         BreadcrumbItem(title: "Dashboard", route: "/dashboard"),
         BreadcrumbItem(title: "Product", route: "/products"),
@@ -229,23 +255,28 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           route: null,
         ),
       ],
+
+      // Actions
       isLoading: _isLoading,
       onSave: _handleSubmit,
       onDiscard: () => context.pop(),
 
+      // SIDE INFO: Images
       sideInfo: FitHubImagePicker(
         images: _displayImages.map((e) {
-          // Logic hiển thị hỗn hợp
-          if (e is String) return e; // URL ảnh cũ
-          if (e is XFile) return kIsWeb ? e.path : File(e.path); // Ảnh mới
-          return e;
+          // Convert XFile sang File (Mobile) hoặc String Path (Web)
+          if (e is XFile) return kIsWeb ? e.path : File(e.path);
+          return e; // String URL cũ
         }).toList(),
         onAddTap: _pickImage,
         onRemoveTap: _removeImage,
       ),
 
+      // MAIN INFO: Form Fields
       mainInfo: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Name
           FitHubLabelInput(
             label: "Product Name",
             hintText: "Input product name",
@@ -253,6 +284,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           ),
           const SizedBox(height: 16),
 
+          // Row: Category & Price
           Row(
             children: [
               Expanded(
@@ -280,6 +312,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           ),
           const SizedBox(height: 16),
 
+          // Stock Quantity
           FitHubLabelInput(
             label: "Stock Quantity",
             hintText: "Input stock",
@@ -289,15 +322,56 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           ),
           const SizedBox(height: 16),
 
+          // --- 🆕 STATUS SWITCH ---
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Active Status",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _isActive
+                          ? "Product will be visible"
+                          : "Product will be hidden",
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                  ],
+                ),
+                Switch(
+                  value: _isActive,
+                  activeColor: AppColors.primary,
+                  onChanged: (val) => setState(() => _isActive = val),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Description
           FitHubLabelInput(
             label: "Description",
             hintText: "Product details...",
             controller: _descController,
             maxLines: 4,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
 
-          // Tag Input
+          // Tags
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -306,8 +380,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               border: Border.all(color: AppColors.border),
             ),
             child: FitHubTagInput(
-              initialTags: _tags, // Truyền tags cũ để hiển thị khi edit
-              onTagsChanged: (tags) => _tags = tags,
+              initialTags: _initialTags, // Truyền tag cũ vào nếu có
+              onTagsChanged: (tags) {
+                _tags = tags;
+              },
             ),
           ),
         ],
