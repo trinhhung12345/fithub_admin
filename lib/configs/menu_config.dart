@@ -23,6 +23,5 @@ class MenuConfig {
       "/orders",
       FontAwesomeIcons.fileInvoiceDollar,
     ), // Icon hóa đơn
-    MenuItem("Khách hàng", "/users", FontAwesomeIcons.users),
   ];
 }
