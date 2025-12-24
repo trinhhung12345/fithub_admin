@@ -82,19 +82,22 @@ class WebSidebar extends StatelessWidget {
           ),
 
           // 3. User Profile Bottom (Optional giống mẫu)
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundImage: NetworkImage("https://i.pravatar.cc/150?u=a"),
-              ), // Ảnh giả
-              title: Text(
-                "Admin",
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text(
-                "admin@fithub.com",
-                style: TextStyle(fontSize: 12),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: InkWell(
+              onTap: () => context.go('/profile'),
+              borderRadius: BorderRadius.circular(8),
+              child: const ListTile(
+                contentPadding: EdgeInsets.symmetric(horizontal: 8),
+                leading: CircleAvatar(
+                  backgroundColor: Color(0xFFE3F2FD),
+                  child: Icon(Icons.person, color: Color(0xFF1E88E5)),
+                ),
+                title: Text(
+                  "Trinh Van Hung",
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text("Admin", style: TextStyle(fontSize: 12)),
               ),
             ),
           ),

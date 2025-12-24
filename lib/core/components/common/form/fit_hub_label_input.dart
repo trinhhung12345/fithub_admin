@@ -14,6 +14,7 @@ class FitHubLabelInput extends StatelessWidget {
   final Widget? suffixIcon;
   final int maxLines;
   final List<TextInputFormatter>? inputFormatters;
+  final bool obscureText;
 
   const FitHubLabelInput({
     super.key,
@@ -27,6 +28,7 @@ class FitHubLabelInput extends StatelessWidget {
     this.suffixIcon,
     this.maxLines = 1,
     this.inputFormatters,
+    this.obscureText = false,
   });
 
   @override
@@ -54,6 +56,7 @@ class FitHubLabelInput extends StatelessWidget {
           onTap: onTap,
           maxLines: maxLines,
           inputFormatters: inputFormatters,
+          obscureText: obscureText,
           style: AppTextStyles.bodyStyle(size: 15),
           decoration: InputDecoration(
             hintText: hintText,
