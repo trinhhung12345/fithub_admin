@@ -14,6 +14,8 @@ class ProductModel {
   // API hiện tại chưa thấy trả về Date, tạm thời để null hoặc placeholder
   final DateTime? createdAt;
 
+  final bool active;
+
   ProductModel({
     required this.id,
     required this.name,
@@ -26,6 +28,8 @@ class ProductModel {
     this.fileUrls = const [],
     this.tags = const [],
     this.createdAt,
+
+    this.active = true,
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
@@ -68,6 +72,7 @@ class ProductModel {
       stock: json['stock'] ?? 0,
       categoryId: catId, // Dùng biến đã xử lý
       categoryName: catName, // Dùng biến đã xử lý
+      active: json['active'] ?? true,
       fileUrls: urls, // Danh sách tất cả URL ảnh
       tags: parsedTags, // Gán tags
       imageUrl: urls.isNotEmpty ? urls.first : null, // Lấy ảnh đầu tiên

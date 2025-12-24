@@ -156,28 +156,31 @@ class ProductService extends ApiService {
 
   // 5. Update Product (PUT)
   Future<bool> updateProduct({
-    required int id, // ID sản phẩm cần sửa
+    required int id,
     required String name,
     required String description,
     required double price,
     required int stock,
     required int categoryId,
     required List<ProductTag> tags,
-    required List<XFile> newImages, // Chỉ gửi ảnh MỚI thêm vào
+    required List<XFile> newImages,
+    bool active = true, // Nhớ kiểm tra tham số này
   }) async {
     try {
       final formData = FormData();
 
-      // 1. Add ID (Quan trọng nhất)
+      // 1. Add ID
       formData.fields.add(MapEntry("id", id.toString()));
 
-      // 2. Add các field cơ bản
+      // 2. Add Fields cơ bản
       formData.fields.addAll([
         MapEntry("name", name),
         MapEntry("description", description),
         MapEntry("price", price.toStringAsFixed(0)),
         MapEntry("stock", stock.toString()),
         MapEntry("categoryId", categoryId.toString()),
+        // 👇 QUAN TRỌNG: Log xem dòng này có được gửi không
+        MapEntry("active", active.toString()),
       ]);
 
       // 3. Add Tags
@@ -186,7 +189,7 @@ class ProductService extends ApiService {
         formData.fields.add(MapEntry('tags[$i].type', tags[i].typeName));
       }
 
-      // 4. Add Files MỚI (Server sẽ xử lý thêm vào hoặc thay thế tùy logic backend)
+      // 4. Add Files
       for (var file in newImages) {
         MultipartFile multipartFile;
         if (kIsWeb) {
@@ -201,20 +204,62 @@ class ProductService extends ApiService {
         formData.files.add(MapEntry("files", multipartFile));
       }
 
-      print("DEBUG: Sending PUT request to /products with ID: $id");
+      // ------------------------------------------------------------------
+      // 🕵️ DEBUG LOG: KIỂM TRA DỮ LIỆU GỬI ĐI (REQUEST)
+      print('\n🔵🔵🔵 [PUT REQUEST] START 🔵🔵🔵');
+      print('URL: ${dio.options.baseUrl}/products');
+      print('DATA SENDING (Form Fields):');
+      for (var field in formData.fields) {
+        // In đậm dòng active để dễ nhìn
+        if (field.key == 'active') {
+          print('👉👉👉 ${field.key}: ${field.value} (Check kỹ dòng này)');
+        } else {
+          print('   - ${field.key}: ${field.value}');
+        }
+      }
+      // ------------------------------------------------------------------
 
       final response = await dio.put(
-        // Dùng PUT
         '/products',
         data: formData,
         options: Options(sendTimeout: const Duration(seconds: 60)),
       );
 
+      // ------------------------------------------------------------------
+      // 🕵️ DEBUG LOG: KIỂM TRA DỮ LIỆU TRẢ VỀ (RESPONSE)
+      print('\n🟢🟢🟢 [PUT RESPONSE] STATUS: ${response.statusCode} 🟢🟢🟢');
+
+      // In ra cục data server trả về
+      final responseData = response.data;
+      print('RAW DATA: $responseData');
+
+      if (responseData['data'] != null) {
+        final serverActive = responseData['data']['active'];
+        print('👉👉👉 Server returned Active status: $serverActive');
+
+        // So sánh
+        if (active.toString() != serverActive.toString()) {
+          print(
+            '❌ CẢNH BÁO: Bạn gửi active=$active nhưng Server trả về active=$serverActive',
+          );
+          print('=> Lỗi chắc chắn do Backend chưa map field active vào DB');
+        } else {
+          print('✅ OK: Dữ liệu Active đã khớp');
+        }
+      }
+      print(
+        '------------------------------------------------------------------\n',
+      );
+      // ------------------------------------------------------------------
+
       return response.statusCode == 200;
     } on DioException catch (e) {
-      print("❌ UPDATE ERROR: ${e.response?.data}");
+      print("\n🔴🔴🔴 [DIO ERROR] 🔴🔴🔴");
+      print("Status: ${e.response?.statusCode}");
+      print("Message: ${e.response?.data}");
       rethrow;
     } catch (e) {
+      print("Unknown Error: $e");
       rethrow;
     }
   }
